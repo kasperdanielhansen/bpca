@@ -1,0 +1,163 @@
+---
+title: "bpca, in-memory benchmarks"
+author: 
+  - Kasper D. Hansen
+package: bpca
+bibliography: bpca.bib
+abstract: >
+  Big PCA	
+vignette: >
+  %\VignetteIndexEntry{bpca}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  BiocStyle::html_document:
+    toc_float: true
+---
+
+# Packages
+
+```{r}
+suppressPackageStartupMessages(library(bpca)))
+suppressPackageStartupMessages(library(irlba))
+suppressPackageStartupMessages(library(matrixStats))
+dataDir <- "~/Work/packages_github/bpca_data"
+```
+
+```{r describeMatrix}
+describeMatrix <- function(mat) {
+    cat(sprintf("class: %s\n", class(mat)[1]))
+    cat(sprintf("dimension: %s x %s\n", nrow(mat), ncol(mat)))
+    cat(sprintf("percent zero: %s\n", round(sum(mat == 0) / prod(dim(mat)) * 100, 1)))
+    zero_rows <- sum(rowSums(mat != 0) == 0)
+    cat(sprintf("number of zero rows: %s (percentage: %s)\n", zero_rows, round(zero_rows/nrow(mat) * 100, 1)))
+    zero_cols <- sum(colSums(mat != 0) == 0)
+    cat(sprintf("number of zero columns: %s (percentage: %s)\n", zero_cols, round(zero_cols/ncol(mat) * 100, 1)))
+    invisible(NULL)
+}
+```
+   
+```{r benchmark}
+benchmark <- function(...) {
+    exprs <- as.list(match.call(expand.dots = FALSE)$...)
+    exprsnm <- sapply(exprs, function(e) paste(deparse(e), collapse = " "))
+    timings <- sapply(exprs, function(ee) {
+        time <- system.time( eval(ee) )
+        time
+    })
+    cbind(data.frame(exprs = exprsnm), t(timings)[,1:3])
+}
+
+
+
+# Datasets
+
+```{r}
+mat0 <- readRDS(file.path(dataDir, "mat0.rds"))
+describeMatrix(mat0)
+```
+
+```{r}
+system.time({
+    out <- prcomp(t(mat0), scale = TRUE, center = TRUE)
+})
+```
+
+```{r}
+benchmark(
+    prcomp(mat0, scale. = TRUE),
+    prcomp_irlba(t(mat0), n = 10, scale. = TRUE),
+    prcomp_fsvd1(t(mat0), n = 10, i = 10)
+)
+```
+
+accuracy
+```{r}
+ref <- prcomp(t(mat0), scale. = TRUE)
+ref.irlba <- prcomp_irlba(t(mat0), n = 10, scale. = TRUE)
+ref.fsvd1 <- prcomp_fsvd1(mat0, n = 10, i = 10)
+##
+all.equal(ref$sdev[1:10], ref.irlba$sdev)
+all.equal(abs(ref$rotation[,1:10]), abs(ref.irlba$rotation))
+all.equal(abs(ref$x[,1:10]), abs(ref.irlba$x))
+##
+all.equal(ref$sdev[1:10], ref.fsvd1$sdev)
+all.equal(abs(ref$rotation[,1:10]), abs(ref.fsvd1$rotation))
+all.equal(abs(ref$x[,1:10]), abs(ref.fsvd1$x))
+```
+
+
+
+
+
+# irlba
+
+
+```{r}
+mat <- readRDS(file.path(dataDir, "mat.rds"))
+mat.dge = as(t(mat), "dgeMatrix")
+mat.dgC = as(t(mat), "dgCMatrix")
+class(mat.dgC)
+dim(mat.dge)
+cmeans = colMeans(mat.dge)
+csds = colSds(as.matrix(mat.dge))
+
+system.time({
+tmp <- prcomp_irlba(mat.dge, center = TRUE, scale. = TRUE, verbose = TRUE)
+})
+
+system.time({
+tmp <- prcomp_irlba(mat.dgC, center = TRUE, scale. = TRUE, verbose = TRUE)
+})
+
+system.time({
+tmp <- prcomp_irlba(mat.dgC, center=FALSE, scale. = FALSE, verbose = TRUE)
+})
+
+system.time({
+tmp <- prcomp_irlba(mat.dgC, center=cmeans, scale. = csds, verbose = TRUE)
+})
+
+system.time({
+tmp <- prcomp_irlba(mat.dge, center = TRUE, scale. = TRUE, verbose = TRUE)
+})
+
+
+system.time({
+tmp <- prcomp_irlba(mat.dge, center = cmeans, scale. = csds, verbose = TRUE)
+})
+
+library(TENxPBMCData)
+tenx = TENxPBMCData("pbmc68k")
+
+
+tenx.c1 = t(as.matrix(counts(tenx[1:10000,])))
+csds = colSds(tenx.c1)
+cmeans = colMeans(tenx.c1)
+tenx.dgC1 = as(tenx.c1, "dgCMatrix")
+
+system.time({
+    prcomp_irlba(tenx.dgC1, center = cmeans, scale. = csds, verbose = TRUE)
+})
+
+
+
+
+
+
+tenx.c2 = t(as.matrix(counts(tenx[20001:nrow(tenx),])))
+
+
+tenx.dge = as(t(as.matrix(counts(tenx))), "dgeMatrix")
+tenx.dgC = as(t(as.matrix(counts(tenx))), "dgCMatrix")
+
+
+# Sessioninfo
+
+``{r sessionInfo, results='asis', echo=FALSE}
+sessionInfo()
+```
+
+# References
+
+

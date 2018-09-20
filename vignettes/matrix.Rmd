@@ -1,0 +1,54 @@
+---
+title: "matrix algebra"
+author: 
+  - Kasper D. Hansen
+package: bpca
+bibliography: bpca.bib
+vignette: >
+  %\VignetteIndexEntry{bpca}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  BiocStyle::html_document:
+    toc_float: true
+---
+
+- $A$ is an $m \times n$ matrix
+- $e_m$ is a vector of length $m$ containing all 1s.
+- $c^M$ is the column means of $A$ and $r^M$ is the row means.
+- $c^S$ is the column standard deviations of $A$ and $r^S$ is the row means.
+
+
+# Features as columns
+
+We now assume genes (features) are rows and cells (samples) are columns (this is standard comp bio layout).
+
+The row scaled and centered version of $A$ is $\tilde{A}$.  Row centering of $A$ can be written as
+$$
+	A - r^M e^t_n
+$$
+
+Multiplying by a vector $y_n$ or $y_m$ (depending on dimension)
+
+$$
+	\tilde{A} y_n = (A y_n) / r^S - (r^M/r^S) e^t_n y_n) = (Ay_n)/r^S - (r^M/r^S) \bar{y}_n
+$$
+
+where $\bar{y}_n$ is the sum of the $y_n$ vector and $/$ is simple coordinate-wise division.  Computing $Ay_n$ in blocks requires fast row-access to $A$.  We use $[A]_b$ to denote a full row block of $A$ and $[y]_b$ to be a block of the vector $y$.  Then
+
+$$
+	[\tilde{A} y_n]_b = ([A]_b y_n) / [r^S]_b - [(r^M/r^S) e^t_n y_n)]_b = ([A]_b y_n)/[r^S]_b - [r^M/r^S]_b \bar{y}_n
+$$
+
+
+Similarly
+$$
+	y^t_m\tilde{A}= (y_m^t/r^S) A - y^t_m (r^M/r^S) e^t_n
+$$
+We now use $[A]^b$ to denote a full column block of $A$ and $[y]_b$ to denote the block of the vector $y$. Then we have
+$$
+	[y\tilde{A}]^b = (y_m^t/r^s) [A]^b - y^t_m (r^M/r^S) e^t_n
+
+# References
+
+

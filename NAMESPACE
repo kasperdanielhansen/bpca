@@ -1,0 +1,15 @@
+import(DelayedArray)
+import(BiocParallel)
+importFrom("stats", "rnorm")
+importFrom(matrixStats, "rowSds")
+
+export(fsvd, prcomp_fsvd1)
+S3method(dim, "SingleChunk")
+S3method(nrow, "SingleChunk")
+S3method(ncol, "SingleChunk")
+S3method(dim, "DoubleChunk")
+S3method(nrow, "DoubleChunk")
+S3method(ncol, "DoubleChunk")
+exportMethods("%*%")
+
+  

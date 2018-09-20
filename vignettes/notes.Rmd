@@ -1,0 +1,53 @@
+---
+title: "Notes"
+author: 
+  - Kasper D. Hansen
+package: bpca
+bibliography: bpca.bib
+abstract: >
+  Big PCA	
+vignette: >
+  %\VignetteIndexEntry{bpca}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  BiocStyle::html_document:
+    toc_float: true
+---
+
+We have the following interesting packages for large-scale SVD / PCA:
+
+- `irlba` [CRAN](https://cran.r-project.org/package=irlba) [Github](https://bwlewis.github.io/irlba/)
+- `Rspectra` [CRAN]() [Github]()
+- `rsvd` [CRAN]() [Github]()
+- `bigstatsr` [CRAN]() [Github]()
+
+
+# The Matrix package
+
+This package has classes for dense matrices (`dgeMatrix`) and sparse matrices (`dgCMatrox` for compressed column oriented storage and `dgTMatrix` for triplet storage).   
+
+Construction: `Matrix(...)` or `Matrix(..., sparse = TRUE)` or (more efficiently) `sparseMatrix(...)`
+
+Question: what are the limits of `dgeMatrix` and `dgCMatrix` wrt. dimensions and non-zero entries?
+
+# Random notes to be organized
+
+- irlba vs Rspectra comparison form the author of irlba [comparison](https://bwlewis.github.io/irlba/comparison.html). Claims that Rspectra is better for eigenvalues and irlba is better for SVDs.
+- fast algorithms for PCA [comparison](https://privefl.github.io/blog/fast-r-functions-to-get-first-principal-components/) by the author of `bigstatsr`.
+- using irlba in an out--of-memory approach on 1kG data: [notes](http://bwlewis.github.io/1000_genomes_examples/notes.html) [examples](http://bwlewis.github.io/1000_genomes_examples/#1000_genomes_examples)
+- paper on thresholded correlation matrix [tcor](https://arxiv.org/abs/1512.07246)
+- basic turtorial on SVD and PCA in R [ph525](http://genomicsclass.github.io/book/pages/pca_svd.html)
+
+
+- (Fun) [Scalability but at cost](http://www.frankmcsherry.org/graph/scalability/cost/2015/01/15/COST.html)
+
+# Sessioninfo
+
+``{r sessionInfo, results='asis', echo=FALSE}
+sessionInfo()
+```
+
+# References
+
+

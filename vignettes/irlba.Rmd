@@ -1,0 +1,157 @@
+---
+title: "bpca, using irlba"
+author: 
+  - Kasper D. Hansen
+package: bpca
+bibliography: bpca.bib
+abstract: >
+  Big PCA	
+vignette: >
+  %\VignetteIndexEntry{bpca}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  BiocStyle::html_document:
+    toc_float: true
+---
+
+# Todo
+
+- incorporate scaling and centering
+- step away from using chunksize as blocks. This will also enable testing of different chunk strategies.
+- run on `pbmc68k` and `brain`
+- make full `prcomp`
+- utilize sparsity
+
+# Packages
+
+```{r}
+suppressPackageStartupMessages(library(bpca))
+suppressPackageStartupMessages(library(irlba))
+suppressPackageStartupMessages(library(HDF5Array))
+dataDir <- "~/Work/packages_github/bpca_data"
+```
+
+# Setup
+
+```{r test1}
+mat <- readRDS(file.path(dataDir, "mat.rds"))
+mat.h5a <- writeHDF5Array(mat, filepath = file.path(dataDir, "mat.h5"), chunkdim = c(4500, 620))
+mat.sc = new("SingleChunk", access = mat.h5a,
+             rowSds = rowSds(mat), rowMeans = rowMeans(mat))
+
+mat.h5a.rows <- writeHDF5Array(mat, filepath = file.path(dataDir, "mat_rows.h5"), chunkdim = c(1500, ncol(mat)))
+mat.h5a.cols <- writeHDF5Array(mat, filepath = file.path(dataDir, "mat_cols.h5"), chunkdim = c(nrow(mat), 50))
+mat.dc = new("DoubleChunk", rowAccess = mat.h5a.rows, colAccess = mat.h5a.cols,
+             rowSds = rowSds(mat), rowMeans = rowMeans(mat))
+```
+
+
+
+```{r}
+## setMethod("%*%", signature(x = "DoubleChunk", y = "numeric"),
+##           function(x, y) {
+##     matrix(unlist(blockApply(x@rowAccess, FUN = function(b) { b %*% y }, grid = chunkGrid(x@rowAccess), BPPARAM = SerialParam())), ncol = 1)
+## })
+## setMethod("%*%", signature(x = "numeric", y = "DoubleChunk"),
+##           function(x, y) {
+##     matrix(unlist(blockApply(y@colAccess, FUN = function(b) { x %*% b }, grid = chunkGrid(y@colAccess))), nrow = 1)
+## })
+set.seed(1234)
+yy1 <- rnorm(ncol(mat.dc))
+yy2 <- rnorm(nrow(mat.dc))
+
+system.time({tmp1 <- mat.dc %*% yy1})
+correct1 <- mat %*% yy1
+all.equal(as.numeric(correct1), as.numeric(tmp1))
+system.time({tmp2 <- yy2 %*% mat.dc})
+correct2 <- yy2 %*% mat
+all.equal(as.numeric(correct2), as.numeric(tmp2))
+```
+
+```{r}
+set.seed(1234)
+yy1 <- rnorm(ncol(mat))
+yy2 <- rnorm(nrow(mat))
+scaled_mat <- t(scale(t(mat)))
+sparseMat <- Matrix(mat, sparse = TRUE)
+
+
+system.time({tmp1 <- mat.dc %*% yy1})
+system.time({correct1 <- scaled_mat %*% yy1})
+all.equal(as.numeric(correct1), as.numeric(tmp1))
+
+system.time({tmp2 <- yy2 %*% mat.dc})
+system.time({correct2 <- yy2 %*% scaled_mat})
+all.equal(as.numeric(correct2), as.numeric(tmp2))
+```
+
+
+```{r}
+library(Matrix)
+system.time({tmp1 <- mat.sc %*% yy1})
+system.time({tmp1 <- yy2 %*% mat.sc})
+```
+
+
+
+
+
+
+
+```{r}
+system.time( {
+    out <- irlba(mat.dc, 3, right_only = FALSE)
+} )
+
+system.time( {
+    out <- irlba(mat.sc, 3, right_only = TRUE)
+} )
+
+system.time( {
+    correct <- irlba(scaled_mat, 3, right_only = TRUE)
+})
+
+system.time( {
+    correct <- irlba(mat, 3, right_only = TRUE)
+})
+
+
+all.equal(correct$v, out2$v)
+
+```
+
+
+# PBMC68
+
+```{r pmbc68k}
+library(TENxPBMCData)
+tenx = TENxPBMCData("pbmc68k")
+tenx.c1 = t(as.matrix(counts(tenx[1:10000,])))
+csds = colSds(tenx.c1)
+cmeans = colMeans(tenx.c1)
+tenx.dgC1 = as(tenx.c1, "dgCMatrix")
+
+system.time({
+    prcomp_irlba(tenx.dgC1, center = cmeans, scale. = csds, verbose = TRUE)
+})
+
+
+tenx.c2 = t(as.matrix(counts(tenx[20001:nrow(tenx),])))
+tenx.dge = as(t(as.matrix(counts(tenx))), "dgeMatrix")
+tenx.dgC = as(t(as.matrix(counts(tenx))), "dgCMatrix")
+```
+
+
+
+
+
+# Sessioninfo
+
+``{r sessionInfo, results='asis', echo=FALSE}
+sessionInfo()
+```
+
+# References
+
+
